@@ -2,8 +2,8 @@ import random, pygame, sys
 from pygame.locals import *
 
 FPS = 30  # frames per second, the general speed of the program
-WINDOWWIDTH = 430  # size of window's width in pixels
-WINDOWHEIGHT = 430  # size of windows' height in pixels
+WINDOWWIDTH = 430 # size of window's width in pixels
+WINDOWHEIGHT = 500  # size of windows' height in pixels
 BOXSIZE = 50  # size of box height & width in pixels
 GAPSIZE = 10  # size of gap between boxes in pixels
 BOARDWIDTH = 7  # number of columns of icons
@@ -68,9 +68,11 @@ def main():
     legal_moves_O = [(r, c) for r in range(BOARDWIDTH) for c in range(BOARDHEIGHT)]
     legal_moves_X = []
     firstSelection = None  # stores the (x, y) of the first box clicked.
+    move_cnt = 0
 
     DISPLAYSURF.fill(BGCOLOR)
     drawBoard(mainBoard, playerTurn)
+    drawStatus(playerTurn)
     move_cnt = 0
 
     last_move_X = None
@@ -82,8 +84,11 @@ def main():
         DISPLAYSURF.fill(BGCOLOR)
         if playerTurn == 'O':
             drawBoard(mainBoard, 'O', legal_moves_O, last_move_O, last_move_X)
+            drawStatus('O', move_cnt, len(legal_moves_O) == 0)
         else:
             drawBoard(mainBoard, 'O', legal_moves_X, last_move_X, last_move_O)
+            drawStatus('X', move_cnt, len(legal_moves_X) == 0)
+
 
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
@@ -106,12 +111,15 @@ def main():
                     if move_cnt == 0:
                         legal_moves_X = legal_moves_O.copy()
                         legal_moves_X.remove((boxx, boxy))
+                    else:
+                        legal_moves_X = get_legal_moves(mainBoard, last_move_X)
                     legal_moves_O = get_legal_moves(mainBoard, (boxx, boxy))
                     last_move_O = (boxx, boxy)
                 elif playerTurn == 'X' and (boxx, boxy) in legal_moves_X:
                     mainBoard[boxx][boxy] = playerTurn
                     legal_moves_X = get_legal_moves(mainBoard, (boxx, boxy))
                     last_move_X = (boxx, boxy)
+                    legal_moves_O = get_legal_moves(mainBoard, last_move_O)
                 else:
                     continue
                 drawXO(playerTurn, boxx, boxy)
@@ -122,13 +130,6 @@ def main():
                 else:
                     playerTurn = 'X'
 
-                # Algorithm that check the game is over
-                if hasWon(mainBoard):
-                    pass
-                if hasDraw(mainBoard):
-                    pass
-                    # -----------------------------
-        # Redraw the screen and wait a clock tick.
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -143,9 +144,42 @@ def getBoxAtPixel(x, y):
                 return (boxx, boxy)
     return (None, None)
 
+def drawStatus(PlayerTurn, count = 0, lose = False):
+    left, top = leftTopCoordsOfBox(0, BOARDHEIGHT)
+    myfont = pygame.font.SysFont(None, 24)
+    turnstr = PlayerTurn + "'s turn"
+    label = myfont.render(turnstr, 1, (0, 0, 0))
+    DISPLAYSURF.blit(label, (left, top))
+
+    cntstr = "Count: " + str(count)
+    labelcnt = myfont.render(cntstr, 1, (0, 0, 0))
+    DISPLAYSURF.blit(labelcnt, (left, top + 25))
+
+    if lose == True:
+        losestr = PlayerTurn + " lose"
+        labellose = myfont.render(losestr, 1, (200, 0, 0))
+        DISPLAYSURF.blit(labellose, (left, top + 50))
+
+    left, top = leftTopCoordsOfBox(2, BOARDHEIGHT)
+    redstr = "Red: You can move to this position"
+    labelred = myfont.render(redstr, 1, LEGALCOLOR)
+    DISPLAYSURF.blit(labelred, (left, top))
+
+    greenstr = "Green: Your last position"
+    labelgreen = myfont.render(greenstr, 1, LASTCOLOR)
+    DISPLAYSURF.blit(labelgreen, (left, top + 25))
+
+    bluestr = "Blue: Your opponent's last position"
+    labelblue = myfont.render(bluestr, 1, LASTCOLOR2)
+    DISPLAYSURF.blit(labelblue, (left, top + 50))
+
+
 
 def drawBoard(board, playerTurn, legal_moves=[], last_move_own=None, last_move_opp=None):
     # Draws all of the boxes in their covered or revealed state.
+    # initialize font; must be called after 'pygame.init()' to avoid 'Font not Initialized' error
+
+
     for boxx in range(BOARDWIDTH):
         for boxy in range(BOARDHEIGHT):
             left, top = leftTopCoordsOfBox(boxx, boxy)
